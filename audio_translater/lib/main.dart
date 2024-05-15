@@ -1,125 +1,152 @@
+import 'package:permission_handler/permission_handler.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+        colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.deepPurple),
+        // Assuming you want to use Material 3, set `useMaterial3` to true
+        // useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'VoiceLingo'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+class MySpeechController extends GetxController {
+  // final _speechRecognition = SpeechRecognition();
+  // bool _isListening = false;
+  // String transcription = '';
+  String selectedAudioPath = ''; // Track selected audio path
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
+  Future<void> _requestStoragePermission() async {
+    final status = await Permission.storage.request();
+    if (status != PermissionStatus.granted) {
+      Get.snackbar(
+        'Storage Permission',
+        'Storage access is required to select audio files. Please grant permission in your device settings.',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 3),
+      );
+      return; // Handle permission denial gracefully
+    }
+  }
 
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
+  Future<void> _pickAudioFile() async {
+    await _requestStoragePermission(); // Ensure storage permission
+    final result = await FilePicker.platform.pickFiles(type: FileType.audio);
+    if (result != null) {
+      final platformFile = result.files.single;
+      selectedAudioPath = platformFile.path!;
+      update(); // Update UI with selected audio path
+    }
+
+    print(selectedAudioPath);
+  }
+
+  // ... existing speech recognition and translation logic ...
+
+  Future<void> _translateAndSpeakTamil() async {
+    if (selectedAudioPath.isEmpty) {
+      Get.snackbar(
+        'No Audio Selected',
+        'Please select an audio file before translation.',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 3),
+      );
+      return;
+    }
+
+    // Implement audio processing logic here (e.g., using just_audio or flutter_sound)
+    // to extract text from the audio file for translation
+
+    // ... existing translation and text-to-speech logic ...
+  }
+}
+
+class MyHomePage extends StatelessWidget {
+  const MyHomePage({Key? key, required this.title}) : super(key: key);
 
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    final speechController = Get.put(MySpeechController());
+
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text(title),
+        backgroundColor: Colors.teal,
+        elevation: 0,
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             const Text(
-              'You have pushed the button this many times:',
+              'Select audio or record:',
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: speechController._pickAudioFile,
+                  child: const Text('Select Audio'),
+                  style: ElevatedButton.styleFrom(
+                      // primary: Colors.teal, // Change button background color
+                      // onPrimary: Colors.white, // Change text color
+                      ),
+                ),
+                const SizedBox(width: 20),
+                // ElevatedButton(
+                //   onPressed: speechController._toggleListening,
+                //   child: Obx(() => Text(speechController._isListening
+                //       ? 'Stop Recording'
+                //       : 'Record Audio')),
+                //   style: ElevatedButton.styleFrom(
+                //       // primary: Colors.teal, // Change button background color
+                //       // onPrimary: Colors.white, // Change text color
+                //       ),
+                // ),
+              ],
+            ),
+            SizedBox(height: 20),
+            if (speechController.selectedAudioPath.isNotEmpty)
+              Text(
+                'Selected Audio: ${speechController.selectedAudioPath}',
+                style: TextStyle(fontSize: 16),
+              ),
+            SizedBox(height: 20),
+            // Text(
+            //   speechController.transcription,
+            //   style: TextStyle(fontSize: 18),
+            // ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: speechController._translateAndSpeakTamil,
+              child: const Text('Translate to Tamil and Speak'),
+              style: ElevatedButton.styleFrom(
+                  // primary: Colors.teal, // Change button background color
+                  // onPrimary: Colors.white, // Change text color
+                  ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      backgroundColor: Colors.grey[200],
     );
   }
 }
